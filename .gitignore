@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# live database — never commit team data; the seed recreates a fresh one
+data/
+
+# logs & OS junk
+*.log
+Thumbs.db
+.DS_Store

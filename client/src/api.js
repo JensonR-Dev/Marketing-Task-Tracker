@@ -4,17 +4,21 @@ async function request(url, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       'x-user': localStorage.getItem('tracker-user') || '',
+      'x-team-key': localStorage.getItem('tracker-key') || '',
       ...options.headers
     }
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Request failed (${res.status})`)
+    const err = new Error(body.error || `Request failed (${res.status})`)
+    err.status = res.status
+    throw err
   }
   return res.json()
 }
 
 export const api = {
+  login: password => request('/api/login', { method: 'POST', body: JSON.stringify({ password }) }),
   bootstrap: () => request('/api/bootstrap'),
   createProject: name => request('/api/projects', { method: 'POST', body: JSON.stringify({ name }) }),
   renameProject: (id, name) => request(`/api/projects/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),

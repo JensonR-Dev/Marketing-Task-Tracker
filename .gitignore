@@ -7,6 +7,9 @@ dist/
 # live database — never commit team data; the seed recreates a fresh one
 data/
 
+# contains the team password — never commit
+start-team.ps1
+
 # logs & OS junk
 *.log
 Thumbs.db

@@ -7,6 +7,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(express.json())
 
+// ---- shared team password (set TEAM_PASSWORD env var to enable) ----
+const TEAM_PASSWORD = process.env.TEAM_PASSWORD || ''
+
+app.post('/api/login', (req, res) => {
+  if (!TEAM_PASSWORD) return res.json({ ok: true, required: false })
+  if ((req.body.password || '') === TEAM_PASSWORD) return res.json({ ok: true })
+  res.status(401).json({ error: 'Wrong password' })
+})
+
+app.use('/api', (req, res, next) => {
+  if (!TEAM_PASSWORD || req.path === '/login') return next()
+  if (req.get('x-team-key') === TEAM_PASSWORD) return next()
+  res.status(401).json({ error: 'Team password required' })
+})
+
 const TASK_FIELDS = [
   'title', 'owners', 'assigned_by', 'status', 'reviewed',
   'assigned_date', 'start_date', 'end_date', 'golive_date', 'notes'

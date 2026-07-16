@@ -14,21 +14,42 @@ npm run dev
 
 Open http://localhost:5173
 
-## Run it for the whole team (production)
+## Run it for the whole team (office network)
 
-Build once, then run the single server — it serves both the app and the API on one port:
+Easiest way: edit the password inside `start-team.ps1` (not committed to git),
+then run it — it builds the frontend if needed, prints the address teammates
+should open, and starts the server:
+
+```
+.\start-team.ps1
+```
+
+Manual equivalent:
 
 ```
 npm run build
-npm start
+$env:TEAM_PASSWORD = "your-password"; npm start
 ```
 
-The app is now on port 3001. Anyone on the same office network can open it at
-`http://<your-machine-IP>:3001` (find your IP with `ipconfig`). For a permanent
-setup, run these two commands on a machine that stays on (or any small VPS),
-optionally with a process manager like `pm2` so it restarts automatically.
+The app runs on port 3001. Anyone on the office network opens
+`http://<your-machine-IP>:3001` (the script prints this; or find your IP with
+`ipconfig`). Run it on a machine that stays on. If teammates can't reach it,
+Windows Firewall is likely blocking inbound port 3001 — allowing it needs
+admin rights (ask IT to allow inbound TCP 3001 for Node.js).
 
 To use a different port: set the `PORT` environment variable before `npm start`.
+
+## Team password
+
+If the `TEAM_PASSWORD` environment variable is set, every visitor must enter
+that shared password once per browser before they can use the app. Without the
+variable (e.g. local development), no password is asked.
+
+## Code
+
+The code lives at https://github.com/JensonR-Dev/Marketing-Task-Tracker
+(private). The database and the password script are gitignored — only code is
+on GitHub, never team data.
 
 ## How it works
 

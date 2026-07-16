@@ -7,11 +7,13 @@ import CommentsPanel from './components/CommentsPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import Modal from './components/Modal.jsx'
 import NotificationsPanel from './components/NotificationsPanel.jsx'
+import PasswordGate from './components/PasswordGate.jsx'
 
 export default function App() {
   const [members, setMembers] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [locked, setLocked] = useState(false)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('tracker-user') || '')
   const [view, setView] = useState('dashboard')
@@ -31,8 +33,8 @@ export default function App() {
 
   const loadData = useCallback(() => {
     return api.bootstrap()
-      .then(data => { setMembers(data.members); setProjects(data.projects) })
-      .catch(e => setError(e.message))
+      .then(data => { setMembers(data.members); setProjects(data.projects); setLocked(false) })
+      .catch(e => { if (e.status === 401) setLocked(true); else setError(e.message) })
   }, [])
 
   useEffect(() => { loadData().finally(() => setLoading(false)) }, [loadData])
@@ -196,6 +198,7 @@ export default function App() {
 
   const me = members.find(m => m.name === currentUser)
 
+  if (locked) return <PasswordGate onUnlock={() => { setLoading(true); loadData().finally(() => setLoading(false)) }} />
   if (loading) return <div className="center-screen">Loading…</div>
   if (!currentUser) return <NamePicker members={members} onPick={pickUser} />
 

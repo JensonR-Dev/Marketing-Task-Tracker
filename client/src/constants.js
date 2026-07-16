@@ -45,8 +45,15 @@ export function isOverdue(task) {
   return new Date(task.golive_date + 'T00:00:00') < today
 }
 
+// handles both SQLite UTC strings ("2026-07-16 10:00:00") and
+// Postgres timestamptz ISO strings ("2026-07-16T10:00:00+00:00")
+export function parseTimestamp(ts) {
+  if (!ts) return new Date(0)
+  return new Date(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : ts + 'Z')
+}
+
 export function timeAgo(isoUtc) {
-  const then = new Date(isoUtc + 'Z')
+  const then = parseTimestamp(isoUtc)
   const mins = Math.floor((Date.now() - then.getTime()) / 60000)
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins}m ago`

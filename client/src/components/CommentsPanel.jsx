@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { parseTimestamp } from '../constants.js'
 
 export default function CommentsPanel({ task, currentUser, onClose, onCommentAdded }) {
   const [comments, setComments] = useState(null)
@@ -46,7 +47,7 @@ export default function CommentsPanel({ task, currentUser, onClose, onCommentAdd
               <div className="comment-meta">
                 <span className="avatar">{c.author[0]}</span>
                 <strong>{c.author}</strong>
-                <span className="comment-time">{new Date(c.created_at + 'Z').toLocaleString()}</span>
+                <span className="comment-time">{parseTimestamp(c.created_at).toLocaleString()}</span>
               </div>
               <p>{c.text}</p>
             </div>

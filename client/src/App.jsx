@@ -31,10 +31,11 @@ export default function App() {
     localStorage.setItem('tracker-theme', theme)
   }, [theme])
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
+    if (!(await api.hasSession())) { setLocked(true); return }
     return api.bootstrap()
       .then(data => { setMembers(data.members); setProjects(data.projects); setLocked(false) })
-      .catch(e => { if (e.status === 401) setLocked(true); else setError(e.message) })
+      .catch(e => setError(e.message))
   }, [])
 
   useEffect(() => { loadData().finally(() => setLoading(false)) }, [loadData])

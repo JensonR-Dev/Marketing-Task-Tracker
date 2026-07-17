@@ -5,7 +5,7 @@ import {
 } from '../constants.js'
 
 const EMPTY_FILTERS = {
-  projects: [], teammates: [], statuses: [],
+  projects: [], teammates: [], statuses: [], overdueOnly: false,
   dateField: 'golive_date', from: '', to: '', search: ''
 }
 
@@ -28,29 +28,59 @@ function ChipGroup({ label, options, selected, onToggle }) {
   )
 }
 
-function StackedBar({ counts, max, total }) {
-  const width = max ? (total / max) * 100 : 0
-  return (
-    <div className="hbar-track">
-      <div className="hbar" style={{ width: `${width}%` }}>
-        {STATUSES.map(s => counts[s] > 0 && (
-          <span
-            key={s}
-            className="hbar-seg"
-            style={{ flex: counts[s], background: STATUS_COLORS[s] }}
-            title={`${s}: ${counts[s]}`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function countByStatus(tasks) {
   const counts = {}
   for (const s of STATUSES) counts[s] = 0
   for (const t of tasks) counts[t.status] = (counts[t.status] || 0) + 1
   return counts
+}
+
+function TaskListGroup({ name, tasks, highlightTaskIds }) {
+  const [collapsed, setCollapsed] = useState(false)
+  return (
+    <div className="list-group">
+      <button className="list-group-header" onClick={() => setCollapsed(c => !c)}>
+        <span className="collapse-btn">{collapsed ? '▸' : '▾'}</span>
+        <strong>{name}</strong>
+        <span className="task-count">{tasks.length} task{tasks.length === 1 ? '' : 's'}</span>
+      </button>
+      {!collapsed && (
+        <div className="table-wrap">
+          <table className="list-table">
+            <thead>
+              <tr>
+                <th>Task</th><th>Owner</th><th>Assigned by</th><th>Status</th>
+                <th>Reviewed?</th><th>Assigned date</th><th>Start date</th><th>End date</th>
+                <th>Expected go-live</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map(t => {
+                const overdue = isOverdue(t)
+                return (
+                  <tr key={t.id} className={`${overdue ? 'list-overdue' : ''} ${highlightTaskIds.has(t.id) ? 'list-highlight' : ''}`}>
+                    <td className="list-task">{t.title}</td>
+                    <td>{t.owners.join(', ') || '—'}</td>
+                    <td>{t.assigned_by || '—'}</td>
+                    <td>
+                      <span className={`status-pill-static ${STATUS_CLASS[t.status]}`}>● {t.status}</span>
+                      {overdue && <div className="overdue-note">● Overdue</div>}
+                    </td>
+                    <td>{t.reviewed ? 'Yes' : '—'}</td>
+                    <td>{formatDate(t.assigned_date) || '—'}</td>
+                    <td>{formatDate(t.start_date) || '—'}</td>
+                    <td>{formatDate(t.end_date) || '—'}</td>
+                    <td>{formatDate(t.golive_date) || '—'}</td>
+                    <td>{t.notes || '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Dashboard({ projects, members, highlightTaskIds }) {
@@ -67,6 +97,7 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
       if (filters.projects.length && !filters.projects.includes(t.project)) return false
       if (filters.teammates.length && !t.owners.some(o => filters.teammates.includes(o))) return false
       if (filters.statuses.length && !filters.statuses.includes(t.status)) return false
+      if (filters.overdueOnly && !isOverdue(t)) return false
       if (filters.from || filters.to) {
         const v = t[filters.dateField]
         if (!v) return false
@@ -88,6 +119,23 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
     }))
   }
 
+  // click a status (card / bar / legend) -> filter the task list to it
+  function selectStatus(status) {
+    setFilters(f => ({
+      ...f,
+      overdueOnly: false,
+      statuses: f.statuses.length === 1 && f.statuses[0] === status && !f.overdueOnly ? [] : [status]
+    }))
+  }
+
+  function selectOverdue() {
+    setFilters(f => ({ ...f, statuses: [], overdueOnly: !f.overdueOnly }))
+  }
+
+  function selectAll() {
+    setFilters(f => ({ ...f, statuses: [], overdueOnly: false }))
+  }
+
   const stats = useMemo(() => ({
     total: tasks.length,
     completed: tasks.filter(t => t.status === 'Completed').length,
@@ -98,25 +146,14 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
 
   const statusCounts = useMemo(() => countByStatus(tasks), [tasks])
 
-  const byMember = useMemo(() => {
-    const rows = members.map(m => {
-      const mine = tasks.filter(t => t.owners.includes(m.name))
-      return { name: m.name, total: mine.length, counts: countByStatus(mine) }
-    })
-    return rows.sort((a, b) => b.total - a.total)
-  }, [tasks, members])
+  const grouped = useMemo(() =>
+    projects
+      .map(p => ({ id: p.id, name: p.name, tasks: tasks.filter(t => t.project_id === p.id) }))
+      .filter(g => g.tasks.length > 0),
+  [projects, tasks])
 
-  const byProject = useMemo(() => {
-    const rows = projects.map(p => {
-      const mine = tasks.filter(t => t.project === p.name)
-      return { name: p.name, total: mine.length, counts: countByStatus(mine) }
-    })
-    return rows.sort((a, b) => b.total - a.total)
-  }, [tasks, projects])
-
-  const maxMember = Math.max(1, ...byMember.map(r => r.total))
-  const maxProject = Math.max(1, ...byProject.map(r => r.total))
   const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS)
+  const statusIs = s => filters.statuses.length === 1 && filters.statuses[0] === s && !filters.overdueOnly
 
   return (
     <div className="dashboard">
@@ -153,104 +190,62 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
         </div>
       </section>
 
-      {/* ---- stat cards ---- */}
+      {/* ---- stat cards (click to filter the list below) ---- */}
       <div className="stat-cards">
-        <div className="panel stat-card"><span className="stat-num">{stats.total}</span><span className="stat-label">Total tasks</span></div>
-        <div className="panel stat-card"><span className="stat-num" style={{ color: STATUS_COLORS.Completed }}>{stats.completed}</span><span className="stat-label">Completed</span></div>
-        <div className="panel stat-card"><span className="stat-num" style={{ color: STATUS_COLORS['In progress'] }}>{stats.inProgress}</span><span className="stat-label">In progress</span></div>
-        <div className="panel stat-card"><span className="stat-num">{stats.notStarted}</span><span className="stat-label">Not yet started</span></div>
-        <div className="panel stat-card"><span className="stat-num" style={{ color: OVERDUE_COLOR }}>{stats.overdue}</span><span className="stat-label">Overdue</span></div>
+        <button className={`panel stat-card ${!filters.statuses.length && !filters.overdueOnly ? 'stat-active' : ''}`} onClick={selectAll}>
+          <span className="stat-num">{stats.total}</span><span className="stat-label">Total tasks</span>
+        </button>
+        <button className={`panel stat-card ${statusIs('Completed') ? 'stat-active' : ''}`} onClick={() => selectStatus('Completed')}>
+          <span className="stat-num" style={{ color: STATUS_COLORS.Completed }}>{stats.completed}</span><span className="stat-label">Completed</span>
+        </button>
+        <button className={`panel stat-card ${statusIs('In progress') ? 'stat-active' : ''}`} onClick={() => selectStatus('In progress')}>
+          <span className="stat-num" style={{ color: STATUS_COLORS['In progress'] }}>{stats.inProgress}</span><span className="stat-label">In progress</span>
+        </button>
+        <button className={`panel stat-card ${statusIs('Not yet started') ? 'stat-active' : ''}`} onClick={() => selectStatus('Not yet started')}>
+          <span className="stat-num">{stats.notStarted}</span><span className="stat-label">Not yet started</span>
+        </button>
+        <button className={`panel stat-card ${filters.overdueOnly ? 'stat-active' : ''}`} onClick={selectOverdue}>
+          <span className="stat-num" style={{ color: OVERDUE_COLOR }}>{stats.overdue}</span><span className="stat-label">Overdue</span>
+        </button>
       </div>
 
-      {/* ---- status overview ---- */}
+      {/* ---- status overview (segments clickable too) ---- */}
       <section className="panel">
-        <h3 className="panel-title">Status overview</h3>
+        <h3 className="panel-title">Status overview — click a status to see its tasks</h3>
         <div className="legend">
           {STATUSES.map(s => statusCounts[s] > 0 && (
-            <span key={s} className="legend-item"><span className="legend-swatch" style={{ background: STATUS_COLORS[s] }} />{s} ({statusCounts[s]})</span>
+            <button key={s} className={`legend-item ${statusIs(s) ? 'legend-active' : ''}`} onClick={() => selectStatus(s)}>
+              <span className="legend-swatch" style={{ background: STATUS_COLORS[s] }} />{s} ({statusCounts[s]})
+            </button>
           ))}
-          {stats.overdue > 0 && <span className="legend-item"><span className="legend-swatch" style={{ background: OVERDUE_COLOR }} />Overdue ({stats.overdue})</span>}
+          {stats.overdue > 0 && (
+            <button className={`legend-item ${filters.overdueOnly ? 'legend-active' : ''}`} onClick={selectOverdue}>
+              <span className="legend-swatch" style={{ background: OVERDUE_COLOR }} />Overdue ({stats.overdue})
+            </button>
+          )}
         </div>
         <div className="overview-bar">
           {STATUSES.map(s => {
             const pct = stats.total ? (statusCounts[s] / stats.total) * 100 : 0
             return pct > 0 && (
-              <div key={s} className="overview-seg" style={{ width: `${pct}%`, background: STATUS_COLORS[s] }} title={`${s}: ${statusCounts[s]}`}>
+              <button key={s} className="overview-seg" style={{ width: `${pct}%`, background: STATUS_COLORS[s] }}
+                title={`${s}: ${statusCounts[s]} — click to filter`} onClick={() => selectStatus(s)}>
                 {pct >= 7 && `${Math.round(pct)}%`}
-              </div>
+              </button>
             )
           })}
           {stats.total === 0 && <div className="overview-empty">No tasks match the filters</div>}
         </div>
       </section>
 
-      {/* ---- charts ---- */}
-      <div className="chart-grid">
-        <section className="panel">
-          <h3 className="panel-title">Workload by teammate</h3>
-          <div className="hbar-rows">
-            {byMember.map(r => (
-              <div key={r.name} className="hbar-row">
-                <span className="hbar-name">{r.name}</span>
-                <StackedBar counts={r.counts} max={maxMember} total={r.total} />
-                <span className="hbar-count">{r.total}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section className="panel">
-          <h3 className="panel-title">Tasks by project</h3>
-          <div className="hbar-rows">
-            {byProject.map(r => (
-              <div key={r.name} className="hbar-row">
-                <span className="hbar-name" title={r.name}>{r.name}</span>
-                <StackedBar counts={r.counts} max={maxProject} total={r.total} />
-                <span className="hbar-count">{r.total}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* ---- task list ---- */}
+      {/* ---- task list, grouped per project ---- */}
       <section className="panel">
         <h3 className="panel-title">Task list</h3>
         <p className="panel-sub">Showing {tasks.length} of {allTasks.length} tasks — switch to the Projects tab to edit</p>
-        <div className="table-wrap">
-          <table className="list-table">
-            <thead>
-              <tr>
-                <th>Project</th><th>Task</th><th>Owner</th><th>Assigned by</th><th>Status</th>
-                <th>Reviewed?</th><th>Assigned date</th><th>Start date</th><th>End date</th>
-                <th>Expected go-live</th><th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map(t => {
-                const overdue = isOverdue(t)
-                return (
-                  <tr key={t.id} className={`${overdue ? 'list-overdue' : ''} ${highlightTaskIds.has(t.id) ? 'list-highlight' : ''}`}>
-                    <td>{t.project}</td>
-                    <td className="list-task">{t.title}</td>
-                    <td>{t.owners.join(', ') || '—'}</td>
-                    <td>{t.assigned_by || '—'}</td>
-                    <td>
-                      <span className={`status-pill-static ${STATUS_CLASS[t.status]}`}>● {t.status}</span>
-                      {overdue && <div className="overdue-note">● Overdue</div>}
-                    </td>
-                    <td>{t.reviewed ? 'Yes' : '—'}</td>
-                    <td>{formatDate(t.assigned_date) || '—'}</td>
-                    <td>{formatDate(t.start_date) || '—'}</td>
-                    <td>{formatDate(t.end_date) || '—'}</td>
-                    <td>{formatDate(t.golive_date) || '—'}</td>
-                    <td>{t.notes || '—'}</td>
-                  </tr>
-                )
-              })}
-              {tasks.length === 0 && <tr><td colSpan="11" className="empty-row">No tasks match the current filters.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        {grouped.map(g => (
+          <TaskListGroup key={g.id} name={g.name} tasks={g.tasks} highlightTaskIds={highlightTaskIds} />
+        ))}
+        {tasks.length === 0 && <div className="empty">No tasks match the current filters.</div>}
       </section>
     </div>
   )

@@ -5,6 +5,7 @@ import NamePicker from './components/NamePicker.jsx'
 import ProjectGroup from './components/ProjectGroup.jsx'
 import CommentsPanel from './components/CommentsPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
+import CalendarView from './components/CalendarView.jsx'
 import Modal from './components/Modal.jsx'
 import NotificationsPanel from './components/NotificationsPanel.jsx'
 import PasswordGate from './components/PasswordGate.jsx'
@@ -17,7 +18,8 @@ export default function App() {
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('tracker-user') || '')
   const [view, setView] = useState('dashboard')
-  const [filters, setFilters] = useState({ owner: '', status: '', search: '' })
+  // Projects view defaults to the signed-in member's own tasks
+  const [filters, setFilters] = useState(() => ({ owner: localStorage.getItem('tracker-user') || '', status: '', search: '' }))
   const [commentsTask, setCommentsTask] = useState(null)
   const [modal, setModal] = useState(null)
   const [notifs, setNotifs] = useState({ notifications: [], unread: 0 })
@@ -35,7 +37,7 @@ export default function App() {
     if (!(await api.hasSession())) { setLocked(true); return }
     return api.bootstrap()
       .then(data => { setMembers(data.members); setProjects(data.projects); setLocked(false) })
-      .catch(e => setError(e.message))
+      .catch(e => { if (e.status === 401) setLocked(true); else setError(e.message) })
   }, [])
 
   useEffect(() => { loadData().finally(() => setLoading(false)) }, [loadData])
@@ -78,6 +80,7 @@ export default function App() {
     setCurrentUser(name)
     setNotifs({ notifications: [], unread: 0 })
     setUserMenuOpen(false)
+    setFilters(f => ({ ...f, owner: name }))
   }
 
   // tasks assigned to me that I haven't seen yet -> highlighted rows
@@ -135,7 +138,8 @@ export default function App() {
   // ---- task actions ----
   async function addTask(projectId) {
     try {
-      const task = await api.createTask(projectId, { title: 'New task' })
+      // in "My tasks" view, a new task is assigned to the filtered member so it stays visible
+      const task = await api.createTask(projectId, { title: 'New task', owners: filters.owner ? [filters.owner] : [] })
       setProjects(ps => ps.map(p => (p.id === projectId ? { ...p, tasks: [...p.tasks, task] } : p)))
     } catch (e) { setError(e.message) }
   }
@@ -214,6 +218,7 @@ export default function App() {
         <nav className="tabs">
           <button className={`tab ${view === 'dashboard' ? 'tab-active' : ''}`} onClick={() => setView('dashboard')}>Dashboard</button>
           <button className={`tab ${view === 'projects' ? 'tab-active' : ''}`} onClick={() => setView('projects')}>Projects</button>
+          <button className={`tab ${view === 'calendar' ? 'tab-active' : ''}`} onClick={() => setView('calendar')}>Calendar</button>
         </nav>
 
         <div className="topbar-controls">
@@ -271,11 +276,19 @@ export default function App() {
       )}
 
       <main className="content">
-        {view === 'dashboard' ? (
+        {view === 'dashboard' && (
           <Dashboard projects={projects} members={members} highlightTaskIds={highlightTaskIds} />
-        ) : (
+        )}
+        {view === 'calendar' && (
+          <CalendarView projects={projects} members={members} onOpenComments={setCommentsTask} />
+        )}
+        {view === 'projects' && (
           <>
             <div className="projects-toolbar">
+              <div className="scope-toggle">
+                <button className={`chip ${filters.owner === currentUser ? 'chip-active' : ''}`} onClick={() => setFilters(f => ({ ...f, owner: currentUser }))}>My tasks</button>
+                <button className={`chip ${filters.owner === '' ? 'chip-active' : ''}`} onClick={() => setFilters(f => ({ ...f, owner: '' }))}>Everyone</button>
+              </div>
               <input
                 className="search"
                 placeholder="Search tasks or projects…"

@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\.."
 
 $env:GH_PAGES_BASE = "/marketing-tracker-live/"
+$env:VITE_BACKEND = "supabase"
 npm run build
 
 Set-Location dist

@@ -478,7 +478,7 @@ input, select { font: inherit; color: inherit; }
 }
 .list-group-header:hover { background: var(--hover); }
 .list-add-task { flex-shrink: 0; }
-.list-group .list-table { min-width: 1050px; }
+.list-group .task-table { min-width: 1050px; }
 
 /* ---- calendar ---- */
 .calendar { display: flex; flex-direction: column; gap: 16px; }

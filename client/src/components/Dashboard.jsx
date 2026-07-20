@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
-  STATUSES, STATUS_CLASS, STATUS_COLORS, OVERDUE_COLOR, DATE_FIELDS,
-  formatDate, isOverdue
+  STATUSES, STATUS_COLORS, OVERDUE_COLOR, DATE_FIELDS,
+  isOverdue
 } from '../constants.js'
+import TaskRow from './TaskRow.jsx'
 
 const EMPTY_FILTERS = {
   projects: [], teammates: [], statuses: [], overdueOnly: false,
@@ -35,7 +36,7 @@ function countByStatus(tasks) {
   return counts
 }
 
-function TaskListGroup({ id, name, tasks, highlightTaskIds, onAddTask }) {
+function TaskListGroup({ id, name, tasks, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments }) {
   const [collapsed, setCollapsed] = useState(true)
   return (
     <div className="list-group">
@@ -49,36 +50,35 @@ function TaskListGroup({ id, name, tasks, highlightTaskIds, onAddTask }) {
       </div>
       {!collapsed && (
         <div className="table-wrap">
-          <table className="list-table">
+          <table className="task-table">
             <thead>
               <tr>
-                <th>Task</th><th>Owner</th><th>Assigned by</th><th>Status</th>
-                <th>Reviewed?</th><th>Assigned date</th><th>Start date</th><th>End date</th>
-                <th>Expected go-live</th><th>Notes</th>
+                <th className="col-title">Task</th>
+                <th>Owner</th>
+                <th>Assigned by</th>
+                <th>Status</th>
+                <th className="col-check">Reviewed</th>
+                <th>Assigned</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Go-live</th>
+                <th className="col-notes">Notes</th>
+                <th className="col-actions"></th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map(t => {
-                const overdue = isOverdue(t)
-                return (
-                  <tr key={t.id} className={`${overdue ? 'list-overdue' : ''} ${highlightTaskIds.has(t.id) ? 'list-highlight' : ''}`}>
-                    <td className="list-task">{t.title}</td>
-                    <td>{t.owners.join(', ') || '—'}</td>
-                    <td>{t.assigned_by || '—'}</td>
-                    <td>
-                      <span className={`status-pill-static ${STATUS_CLASS[t.status]}`}>● {t.status}</span>
-                      {overdue && <div className="overdue-note">● Overdue</div>}
-                    </td>
-                    <td>{t.reviewed ? 'Yes' : '—'}</td>
-                    <td>{formatDate(t.assigned_date) || '—'}</td>
-                    <td>{formatDate(t.start_date) || '—'}</td>
-                    <td>{formatDate(t.end_date) || '—'}</td>
-                    <td>{formatDate(t.golive_date) || '—'}</td>
-                    <td>{t.notes || '—'}</td>
-                  </tr>
-                )
-              })}
-              {tasks.length === 0 && <tr><td colSpan="10" className="empty-row">No tasks yet — click "+ Add task".</td></tr>}
+              {tasks.map(t => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  members={members}
+                  highlighted={highlightTaskIds.has(t.id)}
+                  onUpdate={patch => onUpdateTask(t.id, patch)}
+                  onDelete={() => onDeleteTask(t)}
+                  onOpenComments={() => onOpenComments(t)}
+                />
+              ))}
+              {tasks.length === 0 && <tr><td colSpan="11" className="empty-row">No tasks yet — click "+ Add task".</td></tr>}
             </tbody>
           </table>
         </div>
@@ -87,7 +87,7 @@ function TaskListGroup({ id, name, tasks, highlightTaskIds, onAddTask }) {
   )
 }
 
-export default function Dashboard({ projects, members, highlightTaskIds, onAddTask }) {
+export default function Dashboard({ projects, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   const allTasks = useMemo(
@@ -245,9 +245,20 @@ export default function Dashboard({ projects, members, highlightTaskIds, onAddTa
       {/* ---- task list, grouped per project ---- */}
       <section className="panel">
         <h3 className="panel-title">Task list</h3>
-        <p className="panel-sub">Showing {tasks.length} of {allTasks.length} tasks — switch to the Projects tab to edit</p>
+        <p className="panel-sub">Showing {tasks.length} of {allTasks.length} tasks — click any field to edit</p>
         {grouped.map(g => (
-          <TaskListGroup key={g.id} id={g.id} name={g.name} tasks={g.tasks} highlightTaskIds={highlightTaskIds} onAddTask={onAddTask} />
+          <TaskListGroup
+            key={g.id}
+            id={g.id}
+            name={g.name}
+            tasks={g.tasks}
+            members={members}
+            highlightTaskIds={highlightTaskIds}
+            onAddTask={onAddTask}
+            onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
+            onOpenComments={onOpenComments}
+          />
         ))}
         {grouped.length === 0 && <div className="empty">No tasks match the current filters.</div>}
       </section>

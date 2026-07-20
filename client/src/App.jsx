@@ -289,7 +289,15 @@ export default function App() {
 
       <main className="content">
         {view === 'dashboard' && (
-          <Dashboard projects={projects} members={members} highlightTaskIds={highlightTaskIds} onAddTask={setTaskFormProjectId} />
+          <Dashboard
+            projects={projects}
+            members={members}
+            highlightTaskIds={highlightTaskIds}
+            onAddTask={setTaskFormProjectId}
+            onUpdateTask={updateTask}
+            onDeleteTask={deleteTask}
+            onOpenComments={setCommentsTask}
+          />
         )}
         {view === 'calendar' && (
           <CalendarView projects={projects} members={members} onOpenComments={setCommentsTask} />

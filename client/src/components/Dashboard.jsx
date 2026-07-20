@@ -35,15 +35,18 @@ function countByStatus(tasks) {
   return counts
 }
 
-function TaskListGroup({ name, tasks, highlightTaskIds }) {
+function TaskListGroup({ id, name, tasks, highlightTaskIds, onAddTask }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div className="list-group">
-      <button className="list-group-header" onClick={() => setCollapsed(c => !c)}>
-        <span className="collapse-btn">{collapsed ? '▸' : '▾'}</span>
-        <strong>{name}</strong>
-        <span className="task-count">{tasks.length} task{tasks.length === 1 ? '' : 's'}</span>
-      </button>
+      <div className="list-group-header">
+        <button className="list-group-toggle" onClick={() => setCollapsed(c => !c)}>
+          <span className="collapse-btn">{collapsed ? '▸' : '▾'}</span>
+          <strong>{name}</strong>
+          <span className="task-count">{tasks.length} task{tasks.length === 1 ? '' : 's'}</span>
+        </button>
+        <button className="btn btn-ghost list-add-task" onClick={() => onAddTask(id)}>+ Add task</button>
+      </div>
       {!collapsed && (
         <div className="table-wrap">
           <table className="list-table">
@@ -75,6 +78,7 @@ function TaskListGroup({ name, tasks, highlightTaskIds }) {
                   </tr>
                 )
               })}
+              {tasks.length === 0 && <tr><td colSpan="10" className="empty-row">No tasks yet — click "+ Add task".</td></tr>}
             </tbody>
           </table>
         </div>
@@ -83,7 +87,7 @@ function TaskListGroup({ name, tasks, highlightTaskIds }) {
   )
 }
 
-export default function Dashboard({ projects, members, highlightTaskIds }) {
+export default function Dashboard({ projects, members, highlightTaskIds, onAddTask }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   const allTasks = useMemo(
@@ -145,14 +149,14 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
   }), [tasks])
 
   const statusCounts = useMemo(() => countByStatus(tasks), [tasks])
+  const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS)
 
   const grouped = useMemo(() =>
     projects
       .map(p => ({ id: p.id, name: p.name, tasks: tasks.filter(t => t.project_id === p.id) }))
-      .filter(g => g.tasks.length > 0),
-  [projects, tasks])
+      .filter(g => g.tasks.length > 0 || !isFiltered),
+  [projects, tasks, isFiltered])
 
-  const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS)
   const statusIs = s => filters.statuses.length === 1 && filters.statuses[0] === s && !filters.overdueOnly
 
   return (
@@ -243,9 +247,9 @@ export default function Dashboard({ projects, members, highlightTaskIds }) {
         <h3 className="panel-title">Task list</h3>
         <p className="panel-sub">Showing {tasks.length} of {allTasks.length} tasks — switch to the Projects tab to edit</p>
         {grouped.map(g => (
-          <TaskListGroup key={g.id} name={g.name} tasks={g.tasks} highlightTaskIds={highlightTaskIds} />
+          <TaskListGroup key={g.id} id={g.id} name={g.name} tasks={g.tasks} highlightTaskIds={highlightTaskIds} onAddTask={onAddTask} />
         ))}
-        {tasks.length === 0 && <div className="empty">No tasks match the current filters.</div>}
+        {grouped.length === 0 && <div className="empty">No tasks match the current filters.</div>}
       </section>
     </div>
   )

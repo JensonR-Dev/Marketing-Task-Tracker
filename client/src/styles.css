@@ -467,11 +467,17 @@ input, select { font: inherit; color: inherit; }
 /* ---- dashboard: accordion task list ---- */
 .list-group { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
 .list-group-header {
+  display: flex; align-items: center;
+  padding: 6px 8px 6px 14px;
+  background: var(--surface-2);
+}
+.list-group-toggle {
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 10px 14px;
-  background: var(--surface-2); border: none; text-align: left; font-size: 14px;
+  flex: 1; padding: 4px 0;
+  background: none; border: none; text-align: left; font-size: 14px;
 }
 .list-group-header:hover { background: var(--hover); }
+.list-add-task { flex-shrink: 0; }
 .list-group .list-table { min-width: 1050px; }
 
 /* ---- calendar ---- */

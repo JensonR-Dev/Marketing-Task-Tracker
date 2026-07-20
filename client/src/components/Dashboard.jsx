@@ -36,7 +36,7 @@ function countByStatus(tasks) {
 }
 
 function TaskListGroup({ id, name, tasks, highlightTaskIds, onAddTask }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   return (
     <div className="list-group">
       <div className="list-group-header">

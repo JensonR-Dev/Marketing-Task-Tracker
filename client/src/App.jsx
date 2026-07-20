@@ -7,6 +7,7 @@ import CommentsPanel from './components/CommentsPanel.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import CalendarView from './components/CalendarView.jsx'
 import Modal from './components/Modal.jsx'
+import TaskFormModal from './components/TaskFormModal.jsx'
 import NotificationsPanel from './components/NotificationsPanel.jsx'
 import PasswordGate from './components/PasswordGate.jsx'
 
@@ -22,6 +23,7 @@ export default function App() {
   const [filters, setFilters] = useState(() => ({ owner: localStorage.getItem('tracker-user') || '', status: '', search: '' }))
   const [commentsTask, setCommentsTask] = useState(null)
   const [modal, setModal] = useState(null)
+  const [taskFormProjectId, setTaskFormProjectId] = useState(null)
   const [notifs, setNotifs] = useState({ notifications: [], unread: 0 })
   const [notifOpen, setNotifOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -142,6 +144,16 @@ export default function App() {
       const task = await api.createTask(projectId, { title: 'New task', owners: filters.owner ? [filters.owner] : [] })
       setProjects(ps => ps.map(p => (p.id === projectId ? { ...p, tasks: [...p.tasks, task] } : p)))
     } catch (e) { setError(e.message) }
+  }
+
+  // used by the Dashboard's full task-detail form
+  async function addTaskWithDetails(projectId, form) {
+    const { title, owners, assigned_by, status, ...rest } = form
+    const task = await api.createTask(projectId, { title, owners, assigned_by: assigned_by || null, status })
+    const extra = {}
+    for (const [k, v] of Object.entries(rest)) if (v !== '' && v !== false) extra[k] = v
+    const finalTask = Object.keys(extra).length ? await api.updateTask(task.id, extra) : task
+    setProjects(ps => ps.map(p => (p.id === projectId ? { ...p, tasks: [...p.tasks, finalTask] } : p)))
   }
 
   async function updateTask(taskId, patch) {
@@ -277,7 +289,7 @@ export default function App() {
 
       <main className="content">
         {view === 'dashboard' && (
-          <Dashboard projects={projects} members={members} highlightTaskIds={highlightTaskIds} onAddTask={addTask} />
+          <Dashboard projects={projects} members={members} highlightTaskIds={highlightTaskIds} onAddTask={setTaskFormProjectId} />
         )}
         {view === 'calendar' && (
           <CalendarView projects={projects} members={members} onOpenComments={setCommentsTask} />
@@ -333,6 +345,15 @@ export default function App() {
       )}
 
       {modal && <Modal modal={modal} onClose={() => setModal(null)} />}
+
+      {taskFormProjectId && (
+        <TaskFormModal
+          projectName={projects.find(p => p.id === taskFormProjectId)?.name}
+          members={members}
+          onSubmit={form => addTaskWithDetails(taskFormProjectId, form).catch(e => setError(e.message))}
+          onClose={() => setTaskFormProjectId(null)}
+        />
+      )}
     </div>
   )
 }

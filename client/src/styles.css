@@ -477,7 +477,7 @@ input, select { font: inherit; color: inherit; }
   background: none; border: none; text-align: left; font-size: 14px;
 }
 .list-group-header:hover { background: var(--hover); }
-.list-add-task { flex-shrink: 0; }
+.list-group-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .list-group .task-table { min-width: 1050px; }
 
 /* ---- calendar ---- */

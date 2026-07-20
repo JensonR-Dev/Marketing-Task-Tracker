@@ -297,6 +297,7 @@ export default function App() {
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
             onOpenComments={setCommentsTask}
+            onDeleteProject={id => deleteProject(projects.find(p => p.id === id))}
           />
         )}
         {view === 'calendar' && (

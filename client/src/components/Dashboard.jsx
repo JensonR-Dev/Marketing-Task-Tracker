@@ -36,7 +36,7 @@ function countByStatus(tasks) {
   return counts
 }
 
-function TaskListGroup({ id, name, tasks, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments }) {
+function TaskListGroup({ id, name, tasks, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments, onDeleteProject }) {
   const [collapsed, setCollapsed] = useState(true)
   return (
     <div className="list-group">
@@ -46,7 +46,10 @@ function TaskListGroup({ id, name, tasks, members, highlightTaskIds, onAddTask, 
           <strong>{name}</strong>
           <span className="task-count">{tasks.length} task{tasks.length === 1 ? '' : 's'}</span>
         </button>
-        <button className="btn btn-ghost list-add-task" onClick={() => onAddTask(id)}>+ Add task</button>
+        <div className="list-group-actions">
+          <button className="btn btn-ghost list-add-task" onClick={() => onAddTask(id)}>+ Add task</button>
+          <button className="btn btn-ghost btn-danger" onClick={() => onDeleteProject(id)}>Delete</button>
+        </div>
       </div>
       {!collapsed && (
         <div className="table-wrap">
@@ -87,7 +90,7 @@ function TaskListGroup({ id, name, tasks, members, highlightTaskIds, onAddTask, 
   )
 }
 
-export default function Dashboard({ projects, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments }) {
+export default function Dashboard({ projects, members, highlightTaskIds, onAddTask, onUpdateTask, onDeleteTask, onOpenComments, onDeleteProject }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   const allTasks = useMemo(
@@ -258,6 +261,7 @@ export default function Dashboard({ projects, members, highlightTaskIds, onAddTa
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}
             onOpenComments={onOpenComments}
+            onDeleteProject={onDeleteProject}
           />
         ))}
         {grouped.length === 0 && <div className="empty">No tasks match the current filters.</div>}
